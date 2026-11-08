@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Cadastro facial • Intelbras</title>
+<style>
+:root{font-family:system-ui,-apple-system,Segoe UI,Arial,sans-serif;color:#122343;background:#f2f5fa}*{box-sizing:border-box}body{margin:0;padding:24px 12px}main{max-width:560px;margin:auto;background:#fff;border-radius:19px;padding:25px;box-shadow:0 10px 36px #13244a14}header{margin-bottom:20px}h1{font-size:25px;line-height:1.2;margin:9px 0}.hint,.tiny{font-size:13px;color:#64748b;line-height:1.5}.tag{color:#244b96;background:#eaf0ff;font-size:12px;padding:5px 10px;border-radius:20px;font-weight:700}label{display:block;font-size:14px;font-weight:700;margin:15px 0 6px}input{width:100%;border:1px solid #c1cddd;border-radius:10px;padding:13px;font-size:16px}input[type=file]{padding:11px}details{border:1px solid #e0e8f0;border-radius:12px;padding:13px}summary{cursor:pointer;font-weight:650}button{background:#204994;color:#fff;border:0;border-radius:10px;padding:13px;font-size:15px;font-weight:750;cursor:pointer;min-height:45px}button:disabled{opacity:.55;cursor:wait}.buttons{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:20px}.check{background:#247466}.delete{background:#b42f3d}.status{border-radius:10px;padding:13px;margin-top:18px;background:#eef4fc;white-space:pre-wrap;overflow-wrap:anywhere}.status.bad{background:#fff0ed;color:#912b2b}.status.good{background:#eaf7ed;color:#1a6530}.preview{max-height:160px;max-width:100%;border-radius:8px;margin-top:8px;display:none}.danger{background:#fff3f1;border:1px solid #f0cece;border-radius:10px;padding:10px;margin-top:14px;font-size:13px}.danger input{width:auto}footer{margin-top:20px}.smallbutton{font-size:12px;padding:7px 9px;background:#526888}@media(max-width:410px){main{padding:17px}.buttons{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<main>
+<header><span class="tag">INTELBRAS • SS 5531 MF EX</span><h1>Cadastro facial</h1><div class="hint">Cadastrar, consultar ou excluir usuários pelo celular.</div></header>
+<details open><summary>Conexão segura</summary>
+<label for="api">Endereço HTTPS da ponte</label><input id="api" type="url" placeholder="https://facial.seudominio.com" autocomplete="url">
+<div class="hint">Este endereço é criado na etapa Cloudflare Tunnel, não é o IP do Intelbras.</div>
+<label for="token">Chave de acesso</label><input id="token" type="password" placeholder="Cole sua chave privada" autocomplete="off">
+<div class="hint">Não publique esta chave no GitHub. Ela fica somente nesta aba durante o uso.</div>
+<button type="button" class="smallbutton" id="testar">Testar conexão</button>
+</details>
+<form id="form" autocomplete="off">
+<label for="uid">ID do usuário</label><input id="uid" name="uid" inputmode="numeric" pattern="[0-9]{1,15}" placeholder="Ex.: 3001" required>
+<label for="nome">Nome (para cadastrar)</label><input id="nome" name="nome" maxlength="60" placeholder="Ex.: Maria Silva">
+<label for="foto">Foto (para cadastrar)</label><input id="foto" name="foto" type="file" accept="image/jpeg,image/png,image/*" capture="user">
+<div class="hint">Selecione uma foto da galeria ou use a câmera. A ponte adapta a foto antes de enviar.</div><img class="preview" id="preview" alt="Foto selecionada">
+<div class="danger">Para excluir, será necessária uma confirmação adicional. Teste inicialmente com um ID criado para isso.</div>
+<div class="buttons"><button type="button" data-action="cadastrar">Cadastrar</button><button type="button" data-action="consultar" class="check">Consultar</button><button type="button" data-action="excluir" class="delete">Excluir</button></div>
+</form>
+<div id="status" role="status" aria-live="polite" class="status">Pronto para conectar.</div>
+<footer class="tiny">A página fica no GitHub; nenhuma senha do Intelbras fica aqui. A ponte Python e o túnel precisam estar ligados no computador que acessa o equipamento. Uso administrativo: não compartilhe a chave e evite fotos de terceiros sem autorização e fundamento legal adequado.</footer>
+</main>
+<script>
+const $=id=>document.getElementById(id), statusEl=$('status');
+function show(message,kind=''){statusEl.textContent=message; statusEl.className='status '+kind}
+function settings(){
+ const url=$('api').value.trim().replace(/\/+$/,'');
+ if(!/^https:\/\/[a-z0-9.-]+(?::\d+)?$/i.test(url))throw new Error('Preencha o endereço HTTPS válido da ponte, sem caminho adicional.');
+ const token=$('token').value;
+ if(token.length<32)throw new Error('Cole a chave de acesso gerada na ponte (mínimo 32 caracteres).');
+ return {url,token};
+}
+async function call(path, opts={}){
+ const {url,token}=settings();
+ const timeout=new AbortController();const timer=setTimeout(()=>timeout.abort(),35000);
+ try{
+ const res=await fetch(url+path,{...opts,headers:{Authorization:'Bearer '+token},signal:timeout.signal,cache:'no-store'});
+ const body=await res.json();
+ if(!res.ok||!body.ok)throw new Error(body.message||'Erro HTTP '+res.status);
+ return body.message;
+ }catch(e){if(e.name==='AbortError')throw new Error('Tempo de resposta esgotado.');throw e;}finally{clearTimeout(timer)}
+}
+async function perform(action){
+ const buttons=Array.from(document.querySelectorAll('button[data-action]'));
+ try{
+ const uid=$('uid').value.trim();if(!/^\d{1,15}$/.test(uid))throw new Error('Informe um ID numérico de até 15 dígitos.');
+ const form=new FormData();form.set('uid',uid);form.set('acao',action);
+ if(action==='cadastrar'){
+  if(!$('nome').value.trim()||!$('foto').files[0])throw new Error('Preencha nome e escolha uma foto.');
+  form.set('nome',$('nome').value.trim());form.set('foto',$('foto').files[0]);
+ }
+ if(action==='excluir'){
+  if(!confirm('Confirma EXCLUIR o usuário '+uid+' e sua face do equipamento?'))return;
+  const typed=prompt('Para confirmar, digite EXCLUIR '+uid);
+  if(typed!=='EXCLUIR '+uid){show('Exclusão cancelada.');return;}
+  form.set('confirmacao',typed);
+ }
+ buttons.forEach(b=>b.disabled=true);show('Enviando '+action+'...');
+ show(await call('/api/acao',{method:'POST',body:form}),'good');
+ }catch(e){show('Erro: '+e.message,'bad')}finally{buttons.forEach(b=>b.disabled=false)}
+}
+document.querySelectorAll('button[data-action]').forEach(b=>b.addEventListener('click',()=>perform(b.dataset.action)));
+$('testar').addEventListener('click',async()=>{try{show('Testando conexão...');show(await call('/api/status'),'good')}catch(e){show('Erro: '+e.message,'bad')}});
+$('foto').addEventListener('change',()=>{const old=$('preview').dataset.src;if(old)URL.revokeObjectURL(old);const f=$('foto').files[0];$('preview').style.display=f?'block':'none';if(f){const src=URL.createObjectURL(f);$('preview').dataset.src=src;$('preview').src=src}});
+</script>
+</body></html>
