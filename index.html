@@ -8,11 +8,11 @@
 </style>
 </head>
 <body><main>
-<header><span class="tag">INTELBRAS • SS 5531 MF EX</span><h1>Cadastro facial</h1><div class="hint">Cadastrar, consultar ou excluir usuários pelo celular.</div></header>
+<header><span class="tag">INTELBRAS • SS 5531 MF EX • V3</span><h1>Cadastro facial</h1><div class="hint">Cadastrar, consultar ou excluir usuários pelo celular.</div></header>
 <details open><summary>Conexão segura</summary>
-<label for="api">Endereço HTTPS da ponte</label><input id="api" type="url" placeholder="https://lesson-footage-personally-murray.trycloudflare.com" autocomplete="url">
+<label for="api">Endereço HTTPS da ponte</label><input id="api" type="url" placeholder="https://exemplo.trycloudflare.com" autocomplete="url">
 <div class="hint">Use o endereço HTTPS gerado pelo Cloudflare Tunnel, não o IP do equipamento.</div>
-<label for="token">Chave de acesso</label><input id="AqeO9rtQPySaKCXPb7Ht9Dnx8DMb2oLGSn49nJVpgJZSE5Fzl11yFb62hbYZpcFe" type="password" placeholder="Cole sua chave privada" autocomplete="off">
+<label for="chaveAcesso">Chave de acesso</label><input id="chaveAcesso" name="chaveAcesso" type="password" placeholder="Cole sua chave privada" autocomplete="off">
 <div class="hint">Não publique a chave no GitHub. Ela não será salva pelo navegador nesta página.</div>
 <button type="button" class="smallbutton" id="testar">Testar conexão</button>
 </details>
@@ -35,7 +35,9 @@
   function settings() {
     const url=el('api').value.trim().replace(/\/+$/,'');
     if (!/^https:\/\/[a-z0-9.-]+(?::\d+)?$/i.test(url)) throw new Error('Informe o endereço HTTPS da ponte, sem caminho ou barra final.');
-    const token=el('token').value.trim();
+    const keyField=document.querySelector('input[name="chaveAcesso"]');
+    if (!keyField) throw new Error('Campo Chave de acesso indisponível. Reenvie o arquivo index.html inteiro para o GitHub.');
+    const token=keyField.value.trim();
     if (token.length < 32) throw new Error('Informe a chave API_TOKEN da ponte (mínimo 32 caracteres).');
     return {url,token};
   }
